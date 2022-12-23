@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "xlocale": "c",
+        "xstring": "c",
+        "tuple": "c",
+        "utility": "c"
+    }
+}
