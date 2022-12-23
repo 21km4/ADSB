@@ -24,7 +24,7 @@
 性能評価を行う際は以下のようなコマンドでコンパイルし、実行されます。（スライド参照）
 
 ```
-$ gcc adsb_{グループID}.c –o run_{グループID} –lm –O2
+$ gcc adsb_{グループID}.c -o run_{グループID} -lm -O2
 
 $ timeout 10 run_{グループID} (inputファイル名) (outputファイル名) (answerファイル名)
 ```
