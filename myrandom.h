@@ -1,9 +1,12 @@
 #pragma once
+#ifndef _WIN32
 #include <sys/random.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
+#ifndef _WIN32
 unsigned int myrand() {
     unsigned char buf[4];
     ssize_t size = getrandom(buf, 4, GRND_NONBLOCK);
@@ -18,6 +21,11 @@ unsigned int myrand() {
     }
     return res;
 }
+#else
+unsigned int myrand() {
+    return (rand() | (rand() << 16)); 
+}
+#endif
 
 // [l, r)
 int randint(int l, int r) {
