@@ -34,9 +34,9 @@ $ timeout 10 run_{グループID} (inputファイル名) (outputファイル名)
 例として、`sample` ディレクトリ内に `all` (テストケースが入っているディレクトリ) があり、`sample` ディレクトリ内で 1 つ目のテストケースについてプログラムを実行する場合のコマンドを示します。 
 
 ```
-$ gcc adsb_G1.c –o run_G1 –lm –O2
+$ gcc adsb_G9.c -o run_G9 -lm -O2
 
-$ timeout 10 run_G1 all/testcase1/idata out.txt all/testcase1/answer
+$ timeout 10 run_G9 all/testcase1/idata out.txt all/testcase1/answer
 ```
 
 この場合、出力は `out.txt` に出力されます。
