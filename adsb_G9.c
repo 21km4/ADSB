@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	{
 		int ans = 0;
 		int ans_dis[Q + 1] = {0};
-		char *q = (char *)malloc(sizeof(char) * 200);
+		char *q = (char *)malloc(sizeof(char) * 100);
 		fscanf(input_file, "%s", q);
 
 		// if (j != 0) q = ask(i + 1, argv[3]);
