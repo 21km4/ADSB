@@ -19,35 +19,50 @@ void min_object(int *array, int num, int *min_index)
 	}
 }
 
-// 最小の数を探す
-int min(int a, int b, int c)
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define swap(type, a, b) ({ type temp = (a); (a) = (b); (b) = (temp); })
+
+int snake(int k, int y, const char *str1, const char *str2, const size_t str1_size, const size_t str2_size)
 {
-	return a > b ? (b > c ? c : b) : (a > c ? c : a);
-}
+	int x = y - k;
 
-// レーベンシュタイン距離を求める
-int LevenshteinDistance(char *str1, char *str2)
-{
-	int lenstr1 = strlen(str1) + 1;
-	int lenstr2 = strlen(str2) + 1;
-	int d[lenstr1][lenstr2];
-	int i1 = 0, i2 = 0, cost = 0;
-
-	for (; i1 < lenstr1; i1++)
-		d[i1][0] = i1;
-	for (; i2 < lenstr2; i2++)
-		d[0][i2] = i2;
-
-	for (i1 = 1; i1 < lenstr1; i1++)
+	while (x < str1_size && y < str2_size && str1[x] == str2[y])
 	{
-		for (i2 = 1; i2 < lenstr2; i2++)
-		{
-			cost = str1[i1 - 1] == str2[i2 - 1] ? 0 : 1;
-			d[i1][i2] = min(d[i1 - 1][i2] + 1, d[i1][i2 - 1] + 1, d[i1 - 1][i2 - 1] + cost);
-		}
+		x++;
+		y++;
 	}
 
-	return d[lenstr1 - 1][lenstr2 - 1];
+	return y;
+}
+
+#define SIZE 200
+int edit_distance_onp(char *str1, char *str2)
+{
+	size_t str1_size = strlen(str1);
+	size_t str2_size = strlen(str2);
+	// required: str1_size <= str2_size
+	if (str1_size > str2_size)
+	{
+		swap(char *, str1, str2);
+		swap(size_t, str1_size, str2_size);
+	}
+	static int fp[SIZE];
+	int x, y, k, p;
+	const int offset = str1_size + 1;
+	const int delta = str2_size - str1_size;
+	for (int i = 0; i < SIZE; i++)
+		fp[i] = -1;
+
+	for (p = 0; fp[delta + offset] != str2_size; p++)
+	{
+		for (k = -p; k < delta; k++)
+			fp[k + offset] = snake(k, max(fp[k - 1 + offset] + 1, fp[k + 1 + offset]), str1, str2, str1_size, str2_size);
+		for (k = delta + p; k > delta; k--)
+			fp[k + offset] = snake(k, max(fp[k - 1 + offset] + 1, fp[k + 1 + offset]), str1, str2, str1_size, str2_size);
+		fp[delta + offset] = snake(delta, max(fp[delta - 1 + offset] + 1, fp[delta + 1 + offset]), str1, str2, str1_size, str2_size);
+	}
+
+	return delta + (p - 1) * 2;
 }
 
 int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, const int p_sub, const int p_del)
@@ -63,7 +78,7 @@ int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, cons
 			char *temp = (char *)malloc(sizeof(char) * (length + 1));
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
-			int dis = LevenshteinDistance(temp, q);
+			int dis = edit_distance_onp(temp, q);
 			if (dis < min_dis)
 			{
 				min_dis = dis;
