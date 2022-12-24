@@ -5,6 +5,8 @@
 
 #include "ask.h"
 
+static int count = 0;
+
 void min_object(int *array, int num, int *min_index)
 {
 	int min = INT_MAX;
@@ -65,7 +67,7 @@ int edit_distance_onp(char *str1, char *str2)
 	return delta + (p - 1) * 2;
 }
 
-int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, const int p_sub, const int p_del)
+int PredictAnswer(char** S, char *q, int id, int *ans_dis, const int p_ins, const int p_sub, const int p_del)
 {
 	const int length = strlen(q);
 	int ans_id = -1;
@@ -73,9 +75,10 @@ int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, cons
 	for (int id = 0; id < N; id++)
 	{
 		int min_dis = INT_MAX;
-		for (int i = 0; i < DATA_LENGTH; i += length / (5.0 - entropy))
+		for (int i = 0; i < DATA_LENGTH; i += length / (6.3 - entropy))
 		{
-			char *temp = (char *)malloc(sizeof(char) * (length + 1));
+			// char *temp = (char *)malloc(sizeof(char) * (length + 1));
+			static char temp[100 + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
 			int dis = edit_distance_onp(temp, q);
@@ -87,7 +90,7 @@ int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, cons
 			if (dis < length / 3) // 編集距離はQueryの長さにも依存するのでそれも考慮する
 			{
 				// 多分これであっているだろうから早とちりしてみる
-				// printf("abort\n");
+				count++;
 				return ans_id + 1;
 			}
 		}
@@ -115,7 +118,7 @@ int main(int argc, char *argv[])
 	int p_ins, p_sub, p_del; // Insert, Substitute, Delete
 	fscanf(input_file, "%d %d %d", &p_ins, &p_sub, &p_del);
 
-	char **S = (char **)malloc(sizeof(char *) * N); // Alloc heap memory
+	char **S = (char **)malloc(sizeof(char *) * N);
 
 	for (int i = 0; i < N; i++)
 	{
@@ -129,11 +132,13 @@ int main(int argc, char *argv[])
 	{
 		int ans = 0;
 		int ans_dis[Q + 1] = {0};
-		char *q = (char *)malloc(sizeof(char) * 100);
+		// 毎回確保するの時間な無駄な気がする
+		// char *q = (char *)malloc(sizeof(char) * 100);
+		static char q[100];
 		fscanf(input_file, "%s", q);
 
 		int t = PredictAnswer(S, q, i, ans_dis, p_ins, p_sub, p_del);
-		free(q); // 予測したらもういらないよね
+		// free(q);
 		if (t != 0)
 		{
 			ans = t;
@@ -147,10 +152,12 @@ int main(int argc, char *argv[])
 
 		fprintf(output_file, "%d\n", ans);
 	}
+	printf("abort times: %d\n", count);
 
 #pragma region FINALIZE
 	fclose(input_file);
 	fclose(output_file);
+	fclose(answer_file);
 	for (int i = 0; i < N; i++)
 	{
 		free(S[i]);
