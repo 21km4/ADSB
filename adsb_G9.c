@@ -52,7 +52,7 @@ int LevenshteinDistance(char *str1, char *str2)
 
 int PredictAnswer(char **S, char *q, int id, int *ans_dis, const int p_ins, const int p_sub, const int p_del)
 {
-	int length = strlen(q);
+	const int length = strlen(q);
 	int ans_id = -1;
 	const double entropy = (p_ins + p_sub + p_del) / 15.0;
 	for (int id = 0; id < N; id++)
@@ -117,7 +117,6 @@ int main(int argc, char *argv[])
 		char *q = (char *)malloc(sizeof(char) * 100);
 		fscanf(input_file, "%s", q);
 
-		// if (j != 0) q = ask(i + 1, argv[3]);
 		int t = PredictAnswer(S, q, i, ans_dis, p_ins, p_sub, p_del);
 		free(q); // 予測したらもういらないよね
 		if (t != 0)
