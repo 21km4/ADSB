@@ -72,5 +72,6 @@ char* ask(int query_id, const char* answer_filename) {
             break;
         }
     }
+    fclose(fans);
     return qs.dat;
 }
