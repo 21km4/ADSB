@@ -2,102 +2,105 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
 
 #include "ask.h"
 
-static int count = 0;
+static int abort_count = 0;
+static int ask_count = 0;
 
-void min_object(int *array, int num, int *min_index)
+#pragma region BITPARALLEL
+int weighted_levenshtein_bitpal(char *a, char *b, size_t len)
 {
-	int min = INT_MAX;
-	*min_index = -1;
-	for (int i = 0; i < num; i++)
+	if (len > 64)
 	{
-		if (array[i] < min)
-		{
-			min = array[i];
-			*min_index = i;
-		}
+		return weighted_levenshtein_bitpal(a, b, 64) + weighted_levenshtein_bitpal(a + 64, b + 64, len - 64);
 	}
+
+	uint64_t posbits[256] = {0};
+
+	for (int i = 0; i < len; i++)
+	{
+		posbits[(unsigned char)a[i]] |= 1ull << i;
+	}
+
+	uint64_t DHneg1 = ~0x0ull;
+	uint64_t DHzero = 0;
+	uint64_t DHpos1 = 0;
+
+	// recursion
+	for (int i = 0; i < len; ++i)
+	{
+		uint64_t Matches = posbits[(unsigned char)b[i]];
+		// Complement Matches
+		uint64_t NotMatches = ~Matches;
+
+		// Finding the vertical values. //Find 1s
+		uint64_t INITpos1s = DHneg1 & Matches;
+		uint64_t DVpos1shift = (((INITpos1s + DHneg1) ^ DHneg1) ^ INITpos1s);
+
+		// set RemainingDHneg1
+		uint64_t RemainDHneg1 = DHneg1 ^ (DVpos1shift >> 1);
+		// combine 1s and Matches
+		uint64_t DVpos1shiftorMatch = DVpos1shift | Matches;
+
+		// Find 0s
+		uint64_t INITzeros = (DHzero & DVpos1shiftorMatch);
+		uint64_t DVzeroshift = ((INITzeros << 1) + RemainDHneg1) ^ RemainDHneg1;
+
+		// Find -1s
+		uint64_t DVneg1shift = ~(DVpos1shift | DVzeroshift);
+		DHzero &= NotMatches;
+		// combine 1s and Matches
+		uint64_t DHpos1orMatch = DHpos1 | Matches;
+		// Find 0s
+		DHzero = (DVzeroshift & DHpos1orMatch) | (DVneg1shift & DHzero);
+		// Find 1s
+		DHpos1 = (DVneg1shift & DHpos1orMatch);
+		// Find -1s
+		DHneg1 = ~(DHzero | DHpos1);
+	}
+	// find scores in last row
+	uint64_t add1 = DHzero;
+	uint64_t add2 = DHpos1;
+
+	int dist = len;
+
+	for (int i = 0; i < len; i++)
+	{
+		uint64_t bitmask = 1ull << i;
+		dist -= ((add1 & bitmask) >> i) * 1 + ((add2 & bitmask) >> i) * 2 - 1;
+	}
+
+	return dist;
 }
+#pragma endregion
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define swap(type, a, b) ({ type temp = (a); (a) = (b); (b) = (temp); })
-
-int snake(int k, int y, const char *str1, const char *str2, const size_t str1_size, const size_t str2_size)
+int PredictAnswer(char **S, char *q, int id, const int p_ins, const int p_sub, const int p_del, const int length)
 {
-	int x = y - k;
-
-	while (x < str1_size && y < str2_size && str1[x] == str2[y])
-	{
-		x++;
-		y++;
-	}
-
-	return y;
-}
-
-#define SIZE 200
-int edit_distance_onp(char *str1, char *str2)
-{
-	size_t str1_size = strlen(str1);
-	size_t str2_size = strlen(str2);
-	// required: str1_size <= str2_size
-	if (str1_size > str2_size)
-	{
-		swap(char *, str1, str2);
-		swap(size_t, str1_size, str2_size);
-	}
-	static int fp[SIZE];
-	int x, y, k, p;
-	const int offset = str1_size + 1;
-	const int delta = str2_size - str1_size;
-	for (int i = 0; i < SIZE; i++)
-		fp[i] = -1;
-
-	for (p = 0; fp[delta + offset] != str2_size; p++)
-	{
-		for (k = -p; k < delta; k++)
-			fp[k + offset] = snake(k, max(fp[k - 1 + offset] + 1, fp[k + 1 + offset]), str1, str2, str1_size, str2_size);
-		for (k = delta + p; k > delta; k--)
-			fp[k + offset] = snake(k, max(fp[k - 1 + offset] + 1, fp[k + 1 + offset]), str1, str2, str1_size, str2_size);
-		fp[delta + offset] = snake(delta, max(fp[delta - 1 + offset] + 1, fp[delta + 1 + offset]), str1, str2, str1_size, str2_size);
-	}
-
-	return delta + (p - 1) * 2;
-}
-
-int PredictAnswer(char** S, char *q, int id, int *ans_dis, const int p_ins, const int p_sub, const int p_del)
-{
-	const int length = strlen(q);
 	int ans_id = -1;
-	const double entropy = (p_ins + p_sub + p_del) / 15.0;
+	int min_dis = INT_MAX;
 	for (int id = 0; id < N; id++)
 	{
-		int min_dis = INT_MAX;
-		for (int i = 0; i < DATA_LENGTH; i += length / (6.3 - entropy))
+		for (int i = 0; i < DATA_LENGTH; i += length / 7.0)
 		{
-			// char *temp = (char *)malloc(sizeof(char) * (length + 1));
 			static char temp[100 + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
-			int dis = edit_distance_onp(temp, q);
+			int dis = weighted_levenshtein_bitpal(temp, q, length);
 			if (dis < min_dis)
 			{
 				min_dis = dis;
 				ans_id = id;
 			}
-			if (dis < length / 3) // 編集距離はQueryの長さにも依存するのでそれも考慮する
+			if (dis < length / 3)
 			{
-				// 多分これであっているだろうから早とちりしてみる
-				count++;
+				abort_count++;
 				return ans_id + 1;
 			}
 		}
-		ans_dis[id] += min_dis;
 	}
-	// printf("dis=%d\n", ans_dis);
-	return 0;
+	return ans_id + 1;
 }
 
 int main(int argc, char *argv[])
@@ -115,7 +118,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	int p_ins, p_sub, p_del; // Insert, Substitute, Delete
+	int p_ins, p_sub, p_del;
 	fscanf(input_file, "%d %d %d", &p_ins, &p_sub, &p_del);
 
 	char **S = (char **)malloc(sizeof(char *) * N);
@@ -127,32 +130,25 @@ int main(int argc, char *argv[])
 	}
 #pragma endregion
 
-	// p_ins, p_sub, p_del
+	int answer;
+	char *q;
 	for (int i = 0; i < Q; i++)
 	{
-		int ans = 0;
-		int ans_dis[Q + 1] = {0};
-		// 毎回確保するの時間な無駄な気がする
-		// char *q = (char *)malloc(sizeof(char) * 100);
-		static char q[100];
+		q = malloc(sizeof(char) * Q);
 		fscanf(input_file, "%s", q);
+		// q = ask(i + 1, argv[3]);
+		
+		const int length = strlen(q);
+		const int answer = PredictAnswer(S, q, i, p_ins, p_sub, p_del, length);
+		free(q);
+		fprintf(output_file, "%d\n", answer);
 
-		int t = PredictAnswer(S, q, i, ans_dis, p_ins, p_sub, p_del);
-		// free(q);
-		if (t != 0)
-		{
-			ans = t;
-		}
-		else
-		{
-			int min_index;
-			min_object(ans_dis, Q, &min_index);
-			ans = min_index + 1;
-		}
-
-		fprintf(output_file, "%d\n", ans);
+		// 信号長が短い場合にaskを呼んで正確な信号を得るのが良いだろう
+		// つまりaskを呼び出す回数をqの長さで変化させるということ
+		
 	}
-	printf("abort times: %d\n", count);
+	printf("abort times: %d\n", abort_count);
+	printf("ask times: %d\n", ask_count);
 
 #pragma region FINALIZE
 	fclose(input_file);

@@ -3,6 +3,24 @@
         "xlocale": "c",
         "xstring": "c",
         "tuple": "c",
-        "utility": "c"
+        "utility": "c",
+        "algorithm": "c",
+        "atomic": "c",
+        "bitset": "c",
+        "fstream": "c",
+        "iomanip": "c",
+        "istream": "c",
+        "iterator": "c",
+        "memory": "c",
+        "streambuf": "c",
+        "system_error": "c",
+        "xfacet": "c",
+        "xiosbase": "c",
+        "xlocmon": "c",
+        "xlocnum": "c",
+        "xloctime": "c",
+        "xmemory": "c",
+        "xtree": "c",
+        "xutility": "c"
     }
 }
