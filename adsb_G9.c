@@ -136,16 +136,19 @@ int main(int argc, char *argv[])
 	{
 		q = malloc(sizeof(char) * Q);
 		fscanf(input_file, "%s", q);
-		// q = ask(i + 1, argv[3]);
-		
 		const int length = strlen(q);
-		const int answer = PredictAnswer(S, q, i, p_ins, p_sub, p_del, length);
-		free(q);
-		fprintf(output_file, "%d\n", answer);
 
 		// 信号長が短い場合にaskを呼んで正確な信号を得るのが良いだろう
 		// つまりaskを呼び出す回数をqの長さで変化させるということ
+		// それに加えてエラー率も考慮すると良さそう
+		for (int j = 0; j < (100 - length) / 30; j++) {
+			// merge(q, ask(i + 1, argv[3]));
+		}
+		// q = ask(i + 1, argv[3]);
 		
+		const int answer = PredictAnswer(S, q, i, p_ins, p_sub, p_del, length);
+		free(q);
+		fprintf(output_file, "%d\n", answer);
 	}
 	printf("abort times: %d\n", abort_count);
 	printf("ask times: %d\n", ask_count);
