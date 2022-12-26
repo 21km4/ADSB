@@ -1,25 +1,63 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <stdint.h>
+#ifdef EVALUATE_MODE
+#include <time.h>
+#endif
 
 #include "ask.h"
 
+#define EVALUATE_MODE
+
+static char p_ins, p_sub, p_del;
+static char **S;
+static char *q;
+
+#ifdef EVALUATE_MODE
 static int abort_count = 0;
 static int ask_count = 0;
+static int compute_time;
+
+void evaluate(char* argv[]) {
+	FILE *output_file = fopen(argv[2], "r");
+	FILE *answer_file = fopen(argv[3], "r");
+
+    int p_ins, p_sub, p_del;
+	fscanf(answer_file, "%d %d %d", &p_ins, &p_sub, &p_del);
+
+    int correct = 0, i;
+    for (i = 0; i < 100; i++) {
+        int input[100], answer[100];
+        char data[100];
+        if (fscanf(output_file, "%d", &input[i]) == EOF) break;
+        fscanf(answer_file, "%d %s", &answer[i], data);
+        if (input[i] == answer[i]) correct++;
+    }
+
+	// printf("abort times: %d\n", abort_count);
+	// printf("ask times: %d\n", ask_count);
+
+    printf("\n%d/%d Correct.\n", correct, i);
+	printf("Score: %d\n", correct * 100 - ask_count * 5);
+    printf("Time: %d milli seconds\n", compute_time);
+
+	fclose(output_file);
+	fclose(answer_file);
+}
+#endif
 
 #pragma region BITPARALLEL
-int weighted_levenshtein_bitpal(char *a, char *b, const int len_a, const int len_b)
+int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
 {
 	if (len_a > 64)
 	{
-		return weighted_levenshtein_bitpal(a, b, 64, 64); // 64Byteまでしか計算できない上、それだけあれば十分である。
+		return weighted_levenshtein_bitpal(a, 64, b, len_b > 64 ? 64 : len_b);
 	}
 
 	uint64_t posbits[256] = {0};
 
-	for (int i = 0; i < len_a; i++)
+	for (char i = 0; i < len_a; i++)
 	{
 		posbits[(unsigned char)a[i]] |= 1ull << i;
 	}
@@ -29,13 +67,14 @@ int weighted_levenshtein_bitpal(char *a, char *b, const int len_a, const int len
 	uint64_t DHpos1 = 0;
 
 	// recursion
-	for (int i = 0; i < len_b; ++i)
+	for (char i = 0; i < len_b; i++)
 	{
 		uint64_t Matches = posbits[(unsigned char)b[i]];
 		// Complement Matches
 		uint64_t NotMatches = ~Matches;
 
-		// Finding the vertical values. //Find 1s
+		// Finding the vertical values.
+		// Find 1s
 		uint64_t INITpos1s = DHneg1 & Matches;
 		uint64_t DVpos1shift = (((INITpos1s + DHneg1) ^ DHneg1) ^ INITpos1s);
 
@@ -66,7 +105,7 @@ int weighted_levenshtein_bitpal(char *a, char *b, const int len_a, const int len
 
 	int dist = len_b;
 
-	for (int i = 0; i < len_a; i++)
+	for (char i = 0; i < len_a; i++)
 	{
 		uint64_t bitmask = 1ull << i;
 		dist -= ((add1 & bitmask) >> i) * 1 + ((add2 & bitmask) >> i) * 2 - 1;
@@ -76,37 +115,42 @@ int weighted_levenshtein_bitpal(char *a, char *b, const int len_a, const int len
 }
 #pragma endregion
 
-int predict_answer(char **S, char *q, int id, const int p_ins, const int p_sub, const int p_del, const int length)
+int predict_answer(const char id, const char length)
 {
-	int ans_id = -1;
+	char ans_id = -1;
 	int min_distance = INT_MAX;
-	for (int id = 0; id < N; id++)
+	for (char id = 0; id < N; id++)
 	{
-		for (int i = 0; i < DATA_LENGTH; i += length / 7.0)
+		for (int i = 0; i < DATA_LENGTH; i += length / 7.0 + randint(0, 1))
 		{
 			static char temp[100 + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
-			int distance = weighted_levenshtein_bitpal(temp, q, length, length);
+			int distance = weighted_levenshtein_bitpal(temp, length, q, length);
 			if (distance < min_distance)
 			{
 				min_distance = distance;
 				ans_id = id;
 			}
-			if (distance < length / 3)
+			if (distance < length / 4.0)
 			{
+#ifdef EVALUATE_MODE
 				abort_count++;
+#endif
 				return ans_id + 1;
 			}
 		}
 	}
-	return (ans_id + 1) * -1;
+	return ans_id + 1;
 }
 
 int main(int argc, char *argv[])
 {
 #pragma GCC diagnostic ignored "-Wunused-result"
 #pragma region INITIALIZE
+#ifdef EVALUATE_MODE
+	compute_time = clock();
+#endif
 	srand((unsigned int)time(NULL));
 	FILE *input_file = fopen(argv[1], "r");
 	FILE *output_file = fopen(argv[2], "w");
@@ -114,70 +158,49 @@ int main(int argc, char *argv[])
 
 	if (!input_file || !output_file || !answer_file)
 	{
-		printf("error\n");
+		fprintf(stderr, "error\n");
 		exit(EXIT_FAILURE);
 	}
 
-	int p_ins, p_sub, p_del;
 	fscanf(input_file, "%d %d %d", &p_ins, &p_sub, &p_del);
 
-	char **S = (char **)malloc(sizeof(char *) * N);
+	S = (char **)malloc(sizeof(char *) * N);
 
-	for (int i = 0; i < N; i++)
+	for (char i = 0; i < N; i++)
 	{
 		S[i] = (char *)malloc(sizeof(char) * (DATA_LENGTH + 1));
 		fscanf(input_file, "%s", S[i]);
 	}
 #pragma endregion
 
-	int answer;
-	char *q;
-	char result[100];
-	for (int i = 0; i < Q; i++)
+	for (char i = 0; i < Q; i++)
 	{
-		memset(result, 0, 100);
 		q = malloc(sizeof(char) * Q);
 		fscanf(input_file, "%s", q);
-		int length = strlen(q);
+		char length = strlen(q) + 1;
 
-		int answer = predict_answer(S, q, i, p_ins, p_sub, p_del, length);
+		char answer = predict_answer(i, length);
 		free(q);
 
-		while (answer < 0 && length < 33)
-		{
-			result[abs(answer) - 1]++;
-
-			ask_count++;
-			q = ask(i + 1, argv[3]);
-			length = strlen(q);
-			answer = predict_answer(S, q, i, p_ins, p_sub, p_del, length);
-			free(q);
-
-			for (int j = 0; j < 100; j++)
-			{
-				if (result[j] > 1)
-				{
-					answer = j + 1;
-					break;
-				}
-			}
-		}
-
-		fprintf(output_file, "%d\n", abs(answer));
+		fprintf(output_file, "%d\n", answer);
 	}
-	printf("abort times: %d\n", abort_count);
-	printf("ask times: %d\n", ask_count);
 
 #pragma region FINALIZE
 	fclose(input_file);
 	fclose(output_file);
 	fclose(answer_file);
-	for (int i = 0; i < N; i++)
+	for (char i = 0; i < N; i++)
 	{
 		free(S[i]);
 	}
 	free(S);
 #pragma endregion
 #pragma GCC diagnostic warning "-Wunused-result"
+
+#ifdef EVALUATE_MODE
+	compute_time = clock() - compute_time;
+	evaluate(argv);
+#endif
+
 	return 0;
 }
