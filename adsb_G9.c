@@ -10,16 +10,16 @@ static int abort_count = 0;
 static int ask_count = 0;
 
 #pragma region BITPARALLEL
-int weighted_levenshtein_bitpal(char *a, char *b, size_t len)
+int weighted_levenshtein_bitpal(char *a, char *b, const int len_a, const int len_b)
 {
-	if (len > 64)
+	if (len_a > 64)
 	{
-		return weighted_levenshtein_bitpal(a, b, 64) + weighted_levenshtein_bitpal(a + 64, b + 64, len - 64);
+		return weighted_levenshtein_bitpal(a, b, 64, 64); // 64Byteまでしか計算できない上、それだけあれば十分である。
 	}
 
 	uint64_t posbits[256] = {0};
 
-	for (int i = 0; i < len; i++)
+	for (int i = 0; i < len_a; i++)
 	{
 		posbits[(unsigned char)a[i]] |= 1ull << i;
 	}
@@ -29,7 +29,7 @@ int weighted_levenshtein_bitpal(char *a, char *b, size_t len)
 	uint64_t DHpos1 = 0;
 
 	// recursion
-	for (int i = 0; i < len; ++i)
+	for (int i = 0; i < len_b; ++i)
 	{
 		uint64_t Matches = posbits[(unsigned char)b[i]];
 		// Complement Matches
@@ -64,9 +64,9 @@ int weighted_levenshtein_bitpal(char *a, char *b, size_t len)
 	uint64_t add1 = DHzero;
 	uint64_t add2 = DHpos1;
 
-	int dist = len;
+	int dist = len_b;
 
-	for (int i = 0; i < len; i++)
+	for (int i = 0; i < len_a; i++)
 	{
 		uint64_t bitmask = 1ull << i;
 		dist -= ((add1 & bitmask) >> i) * 1 + ((add2 & bitmask) >> i) * 2 - 1;
@@ -76,10 +76,10 @@ int weighted_levenshtein_bitpal(char *a, char *b, size_t len)
 }
 #pragma endregion
 
-int PredictAnswer(char **S, char *q, int id, const int p_ins, const int p_sub, const int p_del, const int length)
+int predict_answer(char **S, char *q, int id, const int p_ins, const int p_sub, const int p_del, const int length)
 {
 	int ans_id = -1;
-	int min_dis = INT_MAX;
+	int min_distance = INT_MAX;
 	for (int id = 0; id < N; id++)
 	{
 		for (int i = 0; i < DATA_LENGTH; i += length / 7.0)
@@ -87,20 +87,20 @@ int PredictAnswer(char **S, char *q, int id, const int p_ins, const int p_sub, c
 			static char temp[100 + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
-			int dis = weighted_levenshtein_bitpal(temp, q, length);
-			if (dis < min_dis)
+			int distance = weighted_levenshtein_bitpal(temp, q, length, length);
+			if (distance < min_distance)
 			{
-				min_dis = dis;
+				min_distance = distance;
 				ans_id = id;
 			}
-			if (dis < length / 3)
+			if (distance < length / 3)
 			{
 				abort_count++;
 				return ans_id + 1;
 			}
 		}
 	}
-	return ans_id + 1;
+	return (ans_id + 1) * -1;
 }
 
 int main(int argc, char *argv[])
@@ -132,23 +132,38 @@ int main(int argc, char *argv[])
 
 	int answer;
 	char *q;
+	char result[100];
 	for (int i = 0; i < Q; i++)
 	{
+		memset(result, 0, 100);
 		q = malloc(sizeof(char) * Q);
 		fscanf(input_file, "%s", q);
-		const int length = strlen(q);
+		int length = strlen(q);
 
-		// 信号長が短い場合にaskを呼んで正確な信号を得るのが良いだろう
-		// つまりaskを呼び出す回数をqの長さで変化させるということ
-		// それに加えてエラー率も考慮すると良さそう
-		for (int j = 0; j < (100 - length) / 30; j++) {
-			// merge(q, ask(i + 1, argv[3]));
-		}
-		// q = ask(i + 1, argv[3]);
-		
-		const int answer = PredictAnswer(S, q, i, p_ins, p_sub, p_del, length);
+		int answer = predict_answer(S, q, i, p_ins, p_sub, p_del, length);
 		free(q);
-		fprintf(output_file, "%d\n", answer);
+
+		while (answer < 0 && length < 33)
+		{
+			result[abs(answer) - 1]++;
+
+			ask_count++;
+			q = ask(i + 1, argv[3]);
+			length = strlen(q);
+			answer = predict_answer(S, q, i, p_ins, p_sub, p_del, length);
+			free(q);
+
+			for (int j = 0; j < 100; j++)
+			{
+				if (result[j] > 1)
+				{
+					answer = j + 1;
+					break;
+				}
+			}
+		}
+
+		fprintf(output_file, "%d\n", abs(answer));
 	}
 	printf("abort times: %d\n", abort_count);
 	printf("ask times: %d\n", ask_count);
