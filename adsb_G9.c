@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 #ifdef EVALUATE_MODE
 #include <time.h>
 #endif
@@ -10,7 +11,7 @@
 
 #define EVALUATE_MODE
 
-static char p_ins, p_sub, p_del;
+static int p_ins, p_sub, p_del;
 static char **S;
 static char *q;
 
@@ -20,6 +21,7 @@ static int ask_count = 0;
 static int compute_time;
 
 void evaluate(char* argv[]) {
+#pragma GCC diagnostic ignored "-Wunused-result"
 	FILE *output_file = fopen(argv[2], "r");
 	FILE *answer_file = fopen(argv[3], "r");
 
@@ -38,17 +40,19 @@ void evaluate(char* argv[]) {
 	// printf("abort times: %d\n", abort_count);
 	// printf("ask times: %d\n", ask_count);
 
-    printf("\n%d/%d Correct.\n", correct, i);
+    printf("%d/%d Correct.\n", correct, i);
 	printf("Score: %d\n", correct * 100 - ask_count * 5);
     printf("Time: %d milli seconds\n", compute_time);
+	printf("\n");
 
 	fclose(output_file);
 	fclose(answer_file);
+#pragma GCC diagnostic warning "-Wunused-result"
 }
 #endif
 
 #pragma region BITPARALLEL
-int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
+int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 {
 	if (len_a > 64)
 	{
@@ -57,7 +61,7 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
 
 	uint64_t posbits[256] = {0};
 
-	for (char i = 0; i < len_a; i++)
+	for (int i = 0; i < len_a; i++)
 	{
 		posbits[(unsigned char)a[i]] |= 1ull << i;
 	}
@@ -67,7 +71,7 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
 	uint64_t DHpos1 = 0;
 
 	// recursion
-	for (char i = 0; i < len_b; i++)
+	for (int i = 0; i < len_b; i++)
 	{
 		uint64_t Matches = posbits[(unsigned char)b[i]];
 		// Complement Matches
@@ -105,7 +109,7 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
 
 	int dist = len_b;
 
-	for (char i = 0; i < len_a; i++)
+	for (int i = 0; i < len_a; i++)
 	{
 		uint64_t bitmask = 1ull << i;
 		dist -= ((add1 & bitmask) >> i) * 1 + ((add2 & bitmask) >> i) * 2 - 1;
@@ -115,11 +119,11 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, char len_b)
 }
 #pragma endregion
 
-int predict_answer(const char id, const char length)
+int predict_answer(const int id, const int length)
 {
-	char ans_id = -1;
+	int ans_id = -1;
 	int min_distance = INT_MAX;
-	for (char id = 0; id < N; id++)
+	for (int id = 0; id < N; id++)
 	{
 		for (int i = 0; i < DATA_LENGTH; i += length / 7.0 + randint(0, 1))
 		{
@@ -166,20 +170,20 @@ int main(int argc, char *argv[])
 
 	S = (char **)malloc(sizeof(char *) * N);
 
-	for (char i = 0; i < N; i++)
+	for (int i = 0; i < N; i++)
 	{
 		S[i] = (char *)malloc(sizeof(char) * (DATA_LENGTH + 1));
 		fscanf(input_file, "%s", S[i]);
 	}
 #pragma endregion
 
-	for (char i = 0; i < Q; i++)
+	for (int i = 0; i < Q; i++)
 	{
 		q = malloc(sizeof(char) * Q);
 		fscanf(input_file, "%s", q);
-		char length = strlen(q) + 1;
+		int length = strlen(q) + 1;
 
-		char answer = predict_answer(i, length);
+		int answer = predict_answer(i, length);
 		free(q);
 
 		fprintf(output_file, "%d\n", answer);
@@ -189,7 +193,7 @@ int main(int argc, char *argv[])
 	fclose(input_file);
 	fclose(output_file);
 	fclose(answer_file);
-	for (char i = 0; i < N; i++)
+	for (int i = 0; i < N; i++)
 	{
 		free(S[i]);
 	}
