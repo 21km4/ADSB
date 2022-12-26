@@ -9,7 +9,7 @@
 
 #include "ask.h"
 
-#define EVALUATE_MODE
+// #define EVALUATE_MODE
 
 static int p_ins, p_sub, p_del;
 static char **S;
@@ -20,29 +20,33 @@ static int abort_count = 0;
 static int ask_count = 0;
 static int compute_time;
 
-void evaluate(char* argv[]) {
+void evaluate(char *argv[])
+{
 #pragma GCC diagnostic ignored "-Wunused-result"
 	FILE *output_file = fopen(argv[2], "r");
 	FILE *answer_file = fopen(argv[3], "r");
 
-    int p_ins, p_sub, p_del;
+	int p_ins, p_sub, p_del;
 	fscanf(answer_file, "%d %d %d", &p_ins, &p_sub, &p_del);
 
-    int correct = 0, i;
-    for (i = 0; i < N; i++) {
-        int input[N], answer[N];
-        char data[N];
-        if (fscanf(output_file, "%d", &input[i]) == EOF) break;
-        fscanf(answer_file, "%d %s", &answer[i], data);
-        if (input[i] == answer[i]) correct++;
-    }
+	int correct = 0, i;
+	for (i = 0; i < N; i++)
+	{
+		int input[N], answer[N];
+		char data[N];
+		if (fscanf(output_file, "%d", &input[i]) == EOF)
+			break;
+		fscanf(answer_file, "%d %s", &answer[i], data);
+		if (input[i] == answer[i])
+			correct++;
+	}
 
 	// printf("abort times: %d\n", abort_count);
 	// printf("ask times: %d\n", ask_count);
 
-    printf("%d/%d Correct.\n", correct, i);
+	printf("%d/%d Correct.\n", correct, i);
 	printf("Score: %d\n", correct * 100 - ask_count * 5);
-    printf("Time: %lf seconds\n", (double)compute_time / CLOCKS_PER_SEC);
+	printf("Time: %lf seconds\n", (double)compute_time / CLOCKS_PER_SEC);
 	printf("\n");
 
 	fclose(output_file);
@@ -119,13 +123,14 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 }
 #pragma endregion
 
-int predict_answer(const int id, const int length)
+int predict_answer(const int index, char *answer_file, const int length)
 {
 	int ans_id = -1;
 	int min_distance = INT_MAX;
+	int multiple = 0;
 	for (int id = 0; id < N; id++)
 	{
-		for (int i = 0; i < DATA_LENGTH; i += length / 7.0)
+		for (int i = 0; i < DATA_LENGTH; i += length / 10.0)
 		{
 			static char temp[N + 1];
 			strncpy(temp, S[id] + i, length);
@@ -135,6 +140,11 @@ int predict_answer(const int id, const int length)
 			{
 				min_distance = distance;
 				ans_id = id;
+				multiple = 0;
+			}
+			if (distance == min_distance && ans_id != id)
+			{
+				multiple++;
 			}
 			if (distance < length / 4.0)
 			{
@@ -144,6 +154,15 @@ int predict_answer(const int id, const int length)
 				return ans_id + 1;
 			}
 		}
+	}
+	if (multiple)
+	{
+		free(q);
+#ifdef EVALUATE_MODE
+		ask_count++;
+#endif
+		q = ask(index + 1, answer_file);
+		return predict_answer(index, answer_file, strlen(q) + 1);
 	}
 	return ans_id + 1;
 }
@@ -181,9 +200,9 @@ int main(int argc, char *argv[])
 	{
 		q = malloc(sizeof(char) * (N + 1));
 		fscanf(input_file, "%s", q);
-		int length = strlen(q);
+		int length = strlen(q) + 1;
 
-		int answer = predict_answer(i, length + 1);
+		int answer = predict_answer(i, argv[3], length);
 		free(q);
 
 		fprintf(output_file, "%d\n", answer);
