@@ -21,6 +21,9 @@
         "xloctime": "c",
         "xmemory": "c",
         "xtree": "c",
-        "xutility": "c"
+        "xutility": "c",
+        "initializer_list": "c",
+        "type_traits": "c",
+        "vector": "c"
     }
 }

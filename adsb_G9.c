@@ -29,9 +29,9 @@ void evaluate(char* argv[]) {
 	fscanf(answer_file, "%d %d %d", &p_ins, &p_sub, &p_del);
 
     int correct = 0, i;
-    for (i = 0; i < 100; i++) {
-        int input[100], answer[100];
-        char data[100];
+    for (i = 0; i < N; i++) {
+        int input[N], answer[N];
+        char data[N];
         if (fscanf(output_file, "%d", &input[i]) == EOF) break;
         fscanf(answer_file, "%d %s", &answer[i], data);
         if (input[i] == answer[i]) correct++;
@@ -42,7 +42,7 @@ void evaluate(char* argv[]) {
 
     printf("%d/%d Correct.\n", correct, i);
 	printf("Score: %d\n", correct * 100 - ask_count * 5);
-    printf("Time: %d milli seconds\n", compute_time);
+    printf("Time: %lf seconds\n", (double)compute_time / CLOCKS_PER_SEC);
 	printf("\n");
 
 	fclose(output_file);
@@ -125,9 +125,9 @@ int predict_answer(const int id, const int length)
 	int min_distance = INT_MAX;
 	for (int id = 0; id < N; id++)
 	{
-		for (int i = 0; i < DATA_LENGTH; i += length / 7.0 + randint(0, 1))
+		for (int i = 0; i < DATA_LENGTH; i += length / 7.0)
 		{
-			static char temp[100 + 1];
+			static char temp[N + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
 			int distance = weighted_levenshtein_bitpal(temp, length, q, length);
@@ -179,11 +179,11 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < Q; i++)
 	{
-		q = malloc(sizeof(char) * Q);
+		q = malloc(sizeof(char) * (N + 1));
 		fscanf(input_file, "%s", q);
-		int length = strlen(q) + 1;
+		int length = strlen(q);
 
-		int answer = predict_answer(i, length);
+		int answer = predict_answer(i, length + 1);
 		free(q);
 
 		fprintf(output_file, "%d\n", answer);

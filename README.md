@@ -37,6 +37,8 @@ $ timeout 10 run_{グループID} (inputファイル名) (outputファイル名)
 $ gcc adsb_G9.c -o run_G9 -lm -O2
 
 $ timeout 10 ./run_G9 all/testcase1/idata out.txt all/testcase1/answer
+
+$ /usr/bin/time -v timeout 10 ./run_G9 all/testcase1/idata out.txt all/testcase1/answer
 ```
 
 この場合、出力は `out.txt` に出力されます。
