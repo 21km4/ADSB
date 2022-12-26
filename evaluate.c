@@ -14,9 +14,9 @@ int main(int argc, char* argv[]) {
         if (fscanf(input_file, "%d", &input[i]) == EOF) break;
         fscanf(answer_file, "%d %s", &answer[i], data);
         if (input[i] == answer[i]) correct++;
-        printf("%d %d\t%s\n", input[i], answer[i], input[i] == answer[i] ? "OK" : "NG");
+        // printf("%d %d\t%s\n", input[i], answer[i], input[i] == answer[i] ? "OK" : "NG");
     }
-    printf("\n%d/%d Correct.\n", correct, i);
+    printf("%d/%d Correct.\n", correct, i);
 
     fclose(input_file);
 	fclose(answer_file);
