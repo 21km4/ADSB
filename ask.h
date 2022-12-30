@@ -9,7 +9,7 @@
 #include "constraint.h"
 
 char* ask(int query_id, const char* answer_filename) {
-    fprintf(stderr, "ask from query_id = %d\n", query_id);
+    // fprintf(stderr, "ask from query_id = %d\n", query_id);
 
     FILE* fans = fopen(answer_filename, "r");
     int p_ins, p_sub, p_del, ansId;

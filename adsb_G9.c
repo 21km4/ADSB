@@ -9,7 +9,7 @@
 
 #include "ask.h"
 
-// #define EVALUATE_MODE
+#define EVALUATE_MODE
 
 static int p_ins, p_sub, p_del;
 static char **S;
@@ -193,6 +193,7 @@ int main(int argc, char *argv[])
 	{
 		S[i] = (char *)malloc(sizeof(char) * (DATA_LENGTH + 1));
 		fscanf(input_file, "%s", S[i]);
+		
 	}
 #pragma endregion
 
