@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <limits.h>
+#include <math.h>
+//#include <stdint.h>
+//#include <limits.h>
 #ifdef EVALUATE_MODE
 #include <time.h>
 #endif
 
 #include "ask.h"
+
+#ifndef INT_MAX
+#define INT_MAX 0x7fffffff
+#endif
 
 #define EVALUATE_MODE
 
@@ -63,43 +68,43 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 		return weighted_levenshtein_bitpal(a, 64, b, len_b > 64 ? 64 : len_b);
 	}
 
-	uint64_t posbits[256] = {0};
+	unsigned long long posbits[256] = {0};
 
 	for (int i = 0; i < len_a; i++)
 	{
 		posbits[(unsigned char)a[i]] |= 1ull << i;
 	}
 
-	uint64_t DHneg1 = ~0x0ull;
-	uint64_t DHzero = 0;
-	uint64_t DHpos1 = 0;
+	unsigned long long DHneg1 = ~0x0ull;
+	unsigned long long DHzero = 0;
+	unsigned long long DHpos1 = 0;
 
 	// recursion
 	for (int i = 0; i < len_b; i++)
 	{
-		uint64_t Matches = posbits[(unsigned char)b[i]];
+		unsigned long long Matches = posbits[(unsigned char)b[i]];
 		// Complement Matches
-		uint64_t NotMatches = ~Matches;
+		unsigned long long NotMatches = ~Matches;
 
 		// Finding the vertical values.
 		// Find 1s
-		uint64_t INITpos1s = DHneg1 & Matches;
-		uint64_t DVpos1shift = (((INITpos1s + DHneg1) ^ DHneg1) ^ INITpos1s);
+		unsigned long long INITpos1s = DHneg1 & Matches;
+		unsigned long long DVpos1shift = (((INITpos1s + DHneg1) ^ DHneg1) ^ INITpos1s);
 
 		// set RemainingDHneg1
-		uint64_t RemainDHneg1 = DHneg1 ^ (DVpos1shift >> 1);
+		unsigned long long RemainDHneg1 = DHneg1 ^ (DVpos1shift >> 1);
 		// combine 1s and Matches
-		uint64_t DVpos1shiftorMatch = DVpos1shift | Matches;
+		unsigned long long DVpos1shiftorMatch = DVpos1shift | Matches;
 
 		// Find 0s
-		uint64_t INITzeros = (DHzero & DVpos1shiftorMatch);
-		uint64_t DVzeroshift = ((INITzeros << 1) + RemainDHneg1) ^ RemainDHneg1;
+		unsigned long long INITzeros = (DHzero & DVpos1shiftorMatch);
+		unsigned long long DVzeroshift = ((INITzeros << 1) + RemainDHneg1) ^ RemainDHneg1;
 
 		// Find -1s
-		uint64_t DVneg1shift = ~(DVpos1shift | DVzeroshift);
+		unsigned long long DVneg1shift = ~(DVpos1shift | DVzeroshift);
 		DHzero &= NotMatches;
 		// combine 1s and Matches
-		uint64_t DHpos1orMatch = DHpos1 | Matches;
+		unsigned long long DHpos1orMatch = DHpos1 | Matches;
 		// Find 0s
 		DHzero = (DVzeroshift & DHpos1orMatch) | (DVneg1shift & DHzero);
 		// Find 1s
@@ -108,14 +113,14 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 		DHneg1 = ~(DHzero | DHpos1);
 	}
 	// find scores in last row
-	uint64_t add1 = DHzero;
-	uint64_t add2 = DHpos1;
+	unsigned long long add1 = DHzero;
+	unsigned long long add2 = DHpos1;
 
 	int dist = len_b;
 
 	for (int i = 0; i < len_a; i++)
 	{
-		uint64_t bitmask = 1ull << i;
+		unsigned long long bitmask = 1ull << i;
 		dist -= ((add1 & bitmask) >> i) * 1 + ((add2 & bitmask) >> i) * 2 - 1;
 	}
 
@@ -128,13 +133,13 @@ int predict_answer(const int index, char *answer_file, const int length)
 	int ans_id = -1;
 	int min_distance = INT_MAX;
 	int multiple = 0;
+	const int step = length / 10.0;
 	for (int id = 0; id < N; id++)
 	{
-		for (int i = 0; i < DATA_LENGTH; i += length / 10.0)
+		for (int i = 0; i < DATA_LENGTH; i += step)
 		{
 			static char temp[N + 1];
 			strncpy(temp, S[id] + i, length);
-			temp[length] = '\0';
 			int distance = weighted_levenshtein_bitpal(temp, length, q, length);
 			if (distance < min_distance)
 			{
@@ -191,9 +196,8 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < N; i++)
 	{
-		S[i] = (char *)malloc(sizeof(char) * (DATA_LENGTH + 1));
+		S[i] = (char *)malloc((DATA_LENGTH + 1));
 		fscanf(input_file, "%s", S[i]);
-		
 	}
 #pragma endregion
 

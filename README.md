@@ -21,7 +21,7 @@
 ## 実行について
 性能評価を行う際は以下のようなコマンドでコンパイルし、実行されます。（スライド参照）
 
-```
+```bash
 $ gcc adsb_G9.c -o run_G9 -lm -O2
 
 $ timeout 10 run_G9 (inputファイル名) (outputファイル名) (answerファイル名)
@@ -31,7 +31,7 @@ $ timeout 10 run_G9 (inputファイル名) (outputファイル名) (answerファ
 
 例として、`sample` ディレクトリ内に `all` (テストケースが入っているディレクトリ) があり、`sample` ディレクトリ内で 1 つ目のテストケースについてプログラムを実行する場合のコマンドを示します。 
 
-```
+```bash
 $ gcc adsb_G9.c -o run_G9 -lm -O2
 
 $ timeout 10 ./run_G9 all/testcase1/idata out.txt all/testcase1/answer
