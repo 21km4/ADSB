@@ -1,9 +1,8 @@
+// #define EVALUATE_MODE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-//#include <stdint.h>
-//#include <limits.h>
 #ifdef EVALUATE_MODE
 #include <time.h>
 #endif
@@ -13,8 +12,6 @@
 #ifndef INT_MAX
 #define INT_MAX 0x7fffffff
 #endif
-
-#define EVALUATE_MODE
 
 static int p_ins, p_sub, p_del;
 static char **S;
