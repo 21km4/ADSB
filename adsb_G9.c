@@ -43,9 +43,6 @@ void evaluate(char *argv[])
 			correct++;
 	}
 
-	// printf("abort times: %d\n", abort_count);
-	// printf("ask times: %d\n", ask_count);
-
 	printf("%d/%d Correct.\n", correct, i);
 	printf("Score: %d\n", correct * 100 - ask_count * 5);
 	printf("Time: %lf seconds\n", (double)compute_time / CLOCKS_PER_SEC);
