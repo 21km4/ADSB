@@ -3,3 +3,7 @@
 run_G9
 *.exe
 *.txt
+*.log
+*.aux
+*.out
+*.synctex.gz

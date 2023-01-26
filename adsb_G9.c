@@ -1,4 +1,4 @@
-// #define EVALUATE_MODE
+#define EVALUATE_MODE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,10 +43,13 @@ void evaluate(char *argv[])
 			correct++;
 	}
 
+	// printf("%d\n", correct * 100 - ask_count * 5);
 	printf("%d/%d Correct.\n", correct, i);
 	printf("Score: %d\n", correct * 100 - ask_count * 5);
 	printf("Time: %lf seconds\n", (double)compute_time / CLOCKS_PER_SEC);
-	printf("\n");
+	// printf("Ask count: %d\n", ask_count);
+	// printf("Abort count: %d\n", abort_count);
+	// printf("\n");
 
 	fclose(output_file);
 	fclose(answer_file);
@@ -54,7 +57,81 @@ void evaluate(char *argv[])
 }
 #endif
 
-#pragma region BITPARALLEL
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+int edit_distance_dp(char *a, int len_a, char *b, int len_b)
+{
+    static int d[101][101];
+
+    for (int i = 0; i < len_a + 1; i++) d[i][0] = i;
+    for (int i = 0; i < len_b + 1; i++) d[0][i] = i;
+    for (int i = 1; i < len_a + 1; i++)
+        for (int j = 1; j < len_b + 1; j++)
+            d[i][j] = min(min(d[i-1][j], d[i][j-1]) + 1, d[i-1][j-1] + (a[i-1] == b[j-1] ? 0 : 1));
+
+    return d[len_a][len_b];
+}
+
+int edit_distance_ond(char *a, int len_a, char *b, int len_b)
+{
+    static int V[201];
+    int x, y;
+    int offset = len_a;
+    V[offset + 1] = 0;
+
+    for (int D = 0; D <= len_a + len_b; D++) {
+        for (int k = -D; k <= D; k += 2) {
+            if (k == -D || k != D && V[k-1+offset] < V[k+1+offset]) x = V[k+1+offset];
+            else x = V[k-1+offset] + 1;
+            y = x - k;
+            while (x < len_a && y < len_a && a[x] == b[y]) {
+                x++;
+                y++;
+            }
+            V[k+offset] = x;
+            if (x >=  len_a && y >= len_b) return D;
+        }
+    }
+
+    return -1;
+}
+
+int snake(int k, int y, char *a, int len_a, char *b, int len_b)
+{
+    int x = y - k;
+
+    while (x < len_a && y < len_b && a[x] == b[y]) {
+        x++;
+        y++;
+    }
+
+    return y;
+}
+
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+int edit_distance_onp(char *a, int len_a, char *b, int len_b)
+{
+    // required: s1->size() <= s2->size()
+    char** s1 = len_a > len_b ? &b : &a;
+    char** s2 = len_a > len_b ? &a : &b;
+	const int s1_size = len_a > len_b ? len_b : len_a;
+	const int s2_size = len_a > len_b ? len_a : len_b;
+    static int fp[201];
+    int x, y, k, p;
+    int offset = s1_size + 1;
+    int delta = s2_size - s1_size;
+    for (int i = 0; i < 201; i++) fp[i] = -1;
+
+    for (p = 0; fp[delta + offset] != s2_size; p++) {
+        for(k = -p; k < delta; k++)
+            fp[k + offset] = snake(k, max(fp[k-1+offset] + 1, fp[k+1+offset]), *s1, s1_size, *s2, s2_size);
+        for(k = delta + p; k > delta; k--)
+            fp[k + offset] = snake(k, max(fp[k-1+offset] + 1, fp[k+1+offset]), *s1, s1_size, *s2, s2_size);
+        fp[delta + offset] = snake(delta, max(fp[delta-1+offset] + 1, fp[delta+1+offset]), *s1, s1_size, *s2, s2_size);
+    }
+
+    return delta + (p - 1) * 2;
+}
+
 int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 {
 	if (len_a > 64)
@@ -120,7 +197,6 @@ int weighted_levenshtein_bitpal(char *a, char len_a, char *b, int len_b)
 
 	return dist;
 }
-#pragma endregion
 
 int predict_answer(const int index, char *answer_file, const int length, int *ids, const int k)
 {
@@ -128,7 +204,7 @@ int predict_answer(const int index, char *answer_file, const int length, int *id
 	int min_distance = INT_MAX;
 	int multiple = 0;
 	int ans_ids[N] = {0};
-	const int step = length / 10.0;
+	const int step = length / 1.0;
 	for (int j = 0; j < k; j++)
 	{
 		int id = ids[j];
@@ -137,6 +213,9 @@ int predict_answer(const int index, char *answer_file, const int length, int *id
 			static char temp[N + 1];
 			strncpy(temp, S[id] + i, length);
 			temp[length] = '\0';
+			// int distance = edit_distance_dp(temp, length, q, length);
+			// int distance = edit_distance_ond(temp, length, q, length);
+			// int distance = edit_distance_onp(temp, length, q, length);
 			int distance = weighted_levenshtein_bitpal(temp, length, q, length);
 			if (distance < min_distance)
 			{
