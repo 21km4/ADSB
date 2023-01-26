@@ -57,7 +57,9 @@ void evaluate(char *argv[])
 }
 #endif
 
+#define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
+
 int edit_distance_dp(char *a, int len_a, char *b, int len_b)
 {
     static int d[101][101];
@@ -95,7 +97,7 @@ int edit_distance_ond(char *a, int len_a, char *b, int len_b)
     return -1;
 }
 
-int snake(int k, int y, char *a, int len_a, char *b, int len_b)
+static int snake(int k, int y, char *a, int len_a, char *b, int len_b)
 {
     int x = y - k;
 
@@ -107,7 +109,6 @@ int snake(int k, int y, char *a, int len_a, char *b, int len_b)
     return y;
 }
 
-#define max(a,b) (((a) > (b)) ? (a) : (b))
 int edit_distance_onp(char *a, int len_a, char *b, int len_b)
 {
     // required: s1->size() <= s2->size()
@@ -204,7 +205,7 @@ int predict_answer(const int index, char *answer_file, const int length, int *id
 	int min_distance = INT_MAX;
 	int multiple = 0;
 	int ans_ids[N] = {0};
-	const int step = length / 1.0;
+	const int step = length / 10.0;
 	for (int j = 0; j < k; j++)
 	{
 		int id = ids[j];
