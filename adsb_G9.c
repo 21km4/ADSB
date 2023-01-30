@@ -1,4 +1,4 @@
-#define EVALUATE_MODE
+// #define EVALUATE_MODE
 
 #include <stdio.h>
 #include <stdlib.h>
